@@ -10,79 +10,198 @@
  * governing permissions and limitations under the License.
  */
 
-import {ActionButton} from '@react-spectrum/button';
-import React from 'react';
+import {action} from '@storybook/addon-actions';
+import {ActionButton, Button} from '@react-spectrum/button';
+import {Flex} from '@react-spectrum/layout';
+import React, {useState} from 'react';
 import {storiesOf} from '@storybook/react';
 import {Tooltip, TooltipTrigger} from '../src';
 
 storiesOf('TooltipTrigger', module)
   .add(
     'default',
-    () => render('This is a tooltip.', {})
-  ).add(
+    () => render({})
+  )
+  .add(
     'placement: left',
-    () => render('This is a tooltip.', {placement: 'start'})
-  ).add(
+    () => render({placement: 'left'})
+  )
+  .add(
+    'placement: right',
+    () => render({placement: 'right'})
+  )
+  .add(
+    'placement: start',
+    () => render({placement: 'start'})
+  )
+  .add(
     'placement: top',
-    () => render('This is a tooltip.', {placement: 'top'})
-  ).add(
+    () => render({placement: 'top'})
+  )
+  .add(
     'placement: bottom',
-    () => render('This is a tooltip.', {placement: 'bottom'})
-  ).add(
+    () => render({placement: 'bottom'})
+  )
+  .add(
+    'placement: top with offset',
+    () => render({placement: 'top', offset: 50})
+  )
+  .add(
+    'placement: bottom with crossOffset',
+    () => render({placement: 'bottom', crossOffset: 50})
+  )
+  .add(
     'isDisabled',
-    () => render('This is a tooltip.', {placement: 'left', isDisabled: true})
-  ).add(
-     'multiple tooltips',
-     () => renderMultipleTriggers('This is a tooltip.', {placement: 'left'})
-   );
+    () => render({placement: 'start', isDisabled: true})
+  )
+  .add(
+    'zero delay',
+    () => render({delay: 0})
+  )
+  .add(
+    'multiple tooltips',
+    () => renderMultipleTriggers({placement: 'start'})
+  )
+  .add(
+    'zero delay multiple tooltips',
+    () => renderMultipleTriggers({delay: 0})
+  )
+  .add(
+    'controlled',
+    () => <ControlledButtons />
+  )
+  .add(
+    'trigger disabled',
+    () => renderDisabledTrigger()
+  )
+  .add(
+    'arrow positioning at edge',
+    () => (
+      <div style={{width: '100%'}}>
+        <TooltipTrigger onOpenChange={action('openChange')}>
+          <ActionButton>Trigger Tooltip</ActionButton>
+          <Tooltip>
+            Long tooltip message that just goes on and on.
+          </Tooltip>
+        </TooltipTrigger>
+      </div>
+    )
+  )
+  .add(
+    'tooltip with other hoverables',
+    () => (
+      <Flex gap="size-100">
+        <TooltipTrigger onOpenChange={action('openChange')}>
+          <ActionButton>Trigger Tooltip</ActionButton>
+          <Tooltip>
+            Long tooltip message that just goes on and on.
+          </Tooltip>
+        </TooltipTrigger>
+        <Button variant="secondary">No Tooltip</Button>
+      </Flex>
+    )
+  );
 
-function render(content, props = {}) {
+function render(props = {}) {
   return (
-    <TooltipTrigger {...props}>
+    <TooltipTrigger {...props} onOpenChange={action('openChange')}>
       <ActionButton>Trigger Tooltip</ActionButton>
       <Tooltip>
-        {content}
+        Tooltip message.
       </Tooltip>
     </TooltipTrigger>
   );
 }
 
-// These are sample functions for proof of concept in this PR. Can be removed at in the next tooltip related pull request.
-function renderMultipleTriggers(content, props = {}) {
+function renderDisabledTrigger() {
   return (
-    <div>
-      <div>
-        <TooltipTrigger {...props}>
-          <ActionButton>
-            Tooltip Trigger
-          </ActionButton>
-          <Tooltip>
-            {content}
-          </Tooltip>
-        </TooltipTrigger>
-      </div>
-      <div style={{height: 10}}> </div>
-      <div>
-        <TooltipTrigger {...props}>
-          <ActionButton>
-            Tooltip Trigger
-          </ActionButton>
-          <Tooltip>
-            {content}
-          </Tooltip>
-        </TooltipTrigger>
-      </div>
-      <div style={{height: 10}}> </div>
-      <div>
-        <TooltipTrigger {...props}>
-          <ActionButton>
-            Tooltip Trigger
-          </ActionButton>
-          <Tooltip>
-            {content}
-          </Tooltip>
-        </TooltipTrigger>
-      </div>
-    </div>
+    <TooltipTrigger onOpenChange={action('openChange')}>
+      <ActionButton isDisabled>Trigger Tooltip</ActionButton>
+      <Tooltip>
+        Tooltip message.
+      </Tooltip>
+    </TooltipTrigger>
+  );
+}
+
+function renderMultipleTriggers(props = {}) {
+  return (
+    <Flex gap="size-100" direction="column">
+      <TooltipTrigger {...props} onOpenChange={action('openChange')}>
+        <ActionButton>
+          Neutral Tooltip
+        </ActionButton>
+        <Tooltip showIcon>
+          Neutral message.
+        </Tooltip>
+      </TooltipTrigger>
+      <TooltipTrigger {...props} onOpenChange={action('openChange')}>
+        <ActionButton>
+          Positive Tooltip
+        </ActionButton>
+        <Tooltip variant="positive" showIcon>
+          Positive message.
+        </Tooltip>
+      </TooltipTrigger>
+      <TooltipTrigger {...props} onOpenChange={action('openChange')}>
+        <ActionButton>
+          Negative Tooltip
+        </ActionButton>
+        <Tooltip variant="negative" showIcon>
+          Negative message.
+        </Tooltip>
+      </TooltipTrigger>
+      <TooltipTrigger {...props} onOpenChange={action('openChange')}>
+        <ActionButton>
+          Info Tooltip
+        </ActionButton>
+        <Tooltip variant="info" showIcon>
+          Informative message.
+        </Tooltip>
+      </TooltipTrigger>
+    </Flex>
+  );
+}
+
+function ControlledButtons(props = {}) {
+  let [one, setOne] = useState(false);
+  let [two, setTwo] = useState(false);
+  let [three, setThree] = useState(false);
+  let [four, setFour] = useState(false);
+  return (
+    <Flex gap="size-100" direction="column">
+      <TooltipTrigger {...props} isOpen={one} onOpenChange={setOne}>
+        <ActionButton>
+          Neutral Tooltip
+        </ActionButton>
+        <Tooltip showIcon>
+          Neutral message.
+        </Tooltip>
+      </TooltipTrigger>
+      <TooltipTrigger {...props} isOpen={two} onOpenChange={setTwo}>
+        <ActionButton>
+          Positive Tooltip
+        </ActionButton>
+        <Tooltip variant="positive" showIcon>
+          Positive message.
+        </Tooltip>
+      </TooltipTrigger>
+      <TooltipTrigger {...props} isOpen={three} onOpenChange={setThree}>
+        <ActionButton>
+          Negative Tooltip
+        </ActionButton>
+        <Tooltip variant="negative" showIcon>
+          Negative message.
+        </Tooltip>
+      </TooltipTrigger>
+      <TooltipTrigger {...props} isOpen={four} onOpenChange={setFour}>
+        <ActionButton>
+          Info Tooltip
+        </ActionButton>
+        <Tooltip variant="info" showIcon>
+          Informative message.
+        </Tooltip>
+      </TooltipTrigger>
+    </Flex>
   );
 }

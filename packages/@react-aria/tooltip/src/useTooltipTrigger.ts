@@ -10,12 +10,13 @@
  * governing permissions and limitations under the License.
  */
 
-import {chain, useId} from '@react-aria/utils';
 import {FocusEvents} from '@react-types/shared';
-import {HoverProps, PressProps} from '@react-aria/interactions';
-import {HTMLAttributes, RefObject} from 'react';
-import {TooltipProps, TooltipTriggerAriaProps, TriggerProps} from '@react-types/tooltip';
+import {getInteractionModality, HoverProps, isFocusVisible, PressProps, usePress} from '@react-aria/interactions';
+import {HTMLAttributes, RefObject, useEffect, useRef} from 'react';
+import {mergeProps, useId} from '@react-aria/utils';
+import {TooltipTriggerProps} from '@react-types/tooltip';
 import {TooltipTriggerState} from '@react-stately/tooltip';
+import {useFocusable} from '@react-aria/focus';
 import {useHover} from '@react-aria/interactions';
 
 interface TooltipTriggerAria {
@@ -23,56 +24,105 @@ interface TooltipTriggerAria {
   tooltipProps: HTMLAttributes<HTMLElement>
 }
 
-export function useTooltipTrigger(props: TooltipTriggerAriaProps, state: TooltipTriggerState, ref: RefObject<HTMLElement>) : TooltipTriggerAria {
+export function useTooltipTrigger(props: TooltipTriggerProps, state: TooltipTriggerState, ref: RefObject<HTMLElement>) : TooltipTriggerAria {
   let {
-    tooltipProps = {} as TooltipProps,
-    triggerProps = {} as TriggerProps,
     isDisabled
   } = props;
 
-  let tooltipId = useId(tooltipProps.id);
-  let triggerId = useId(triggerProps.id);
+  let tooltipId = useId();
 
-  let onKeyDownTrigger = (e) => {
-    if (ref && ref.current) {
-      // dismiss tooltip on esc key press
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        e.stopPropagation();
-        state.setOpen(false);
+  let isHovered = useRef(false);
+  let isFocused = useRef(false);
+
+  let handleShow = () => {
+    if (isHovered.current || isFocused.current) {
+      state.open(isFocused.current);
+    }
+  };
+
+  let handleHide = () => {
+    if (!isHovered.current && !isFocused.current) {
+      state.close();
+    }
+  };
+
+  useEffect(() => {
+    let onKeyDown = (e) => {
+      if (ref && ref.current) {
+        // Escape after clicking something can give it keyboard focus
+        // dismiss tooltip on esc key press
+        if (e.key === 'Escape') {
+          state.close();
+        }
       }
+    };
+    if (state.isOpen) {
+      document.addEventListener('keydown', onKeyDown, true);
+      return () => {
+        document.removeEventListener('keydown', onKeyDown, true);
+      };
+    }
+  }, [ref, state]);
+
+  let onHoverStart = () => {
+    // In chrome, if you hover a trigger, then another element obscures it, due to keyboard
+    // interactions for example, hover will end. When hover is restored after that element disappears,
+    // focus moves on for example, then the tooltip will reopen. We check the modality to know if the hover
+    // is the result of moving the mouse.
+    if (getInteractionModality() === 'pointer') {
+      isHovered.current = true;
+    } else {
+      isHovered.current = false;
+    }
+    handleShow();
+  };
+
+  let onHoverEnd = () => {
+    // no matter how the trigger is left, we should close the tooltip
+    isFocused.current = false;
+    isHovered.current = false;
+    handleHide();
+  };
+
+  let onPressStart = () => {
+    // no matter how the trigger is pressed, we should close the tooltip
+    isFocused.current = false;
+    isHovered.current = false;
+    handleHide();
+  };
+
+  let onFocus = () => {
+    let isVisible = isFocusVisible();
+    if (isVisible) {
+      isFocused.current = true;
+      handleShow();
     }
   };
 
-  // abstract away knowledge of timing transitions from aria hook
-  let tooltipManager = state.tooltipManager;
-
-  let handleDelayedShow = () => {
-    if (isDisabled) {
-      return;
-    }
-    let triggerId = ref.current.id;
-    tooltipManager.showTooltipDelayed(state, triggerId);
-  };
-
-  let handleDelayedHide = () => {
-    tooltipManager.hideTooltipDelayed(state);
+  let onBlur = () => {
+    isFocused.current = false;
+    isHovered.current = false;
+    handleHide();
   };
 
   let {hoverProps} = useHover({
     isDisabled,
-    onHoverStart: handleDelayedShow,
-    onHoverEnd: handleDelayedHide
+    onHoverStart,
+    onHoverEnd
   });
+
+  let {pressProps} = usePress({onPressStart});
+
+  let {focusableProps} = useFocusable({
+    isDisabled,
+    onFocus,
+    onBlur
+  }, ref);
 
   return {
     triggerProps: {
-      id: triggerId,
       'aria-describedby': state.open ? tooltipId : undefined,
-      onKeyDown: chain(triggerProps.onKeyDown, onKeyDownTrigger),
-      ...hoverProps,
-      onFocus: handleDelayedShow,
-      onBlur: handleDelayedHide
+      ...mergeProps(focusableProps, hoverProps, pressProps)
     },
     tooltipProps: {
       id: tooltipId

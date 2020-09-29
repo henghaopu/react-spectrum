@@ -10,7 +10,7 @@
  * governing permissions and limitations under the License.
  */
 
-import React, {AriaAttributes, HTMLAttributes, ReactNode, useContext, useEffect, useState} from 'react';
+import React, {AriaAttributes, HTMLAttributes, ReactNode, useContext, useEffect, useMemo, useState} from 'react';
 import ReactDOM from 'react-dom';
 
 interface ModalProviderProps extends HTMLAttributes<HTMLElement> {
@@ -37,8 +37,8 @@ const Context = React.createContext<ModalContext | null>(null);
 export function ModalProvider(props: ModalProviderProps) {
   let {children} = props;
   let parent = useContext(Context);
-  let [modalCount, setModalCount] = useState(parent ? parent.modalCount : 0);
-  let context = {
+  let [modalCount, setModalCount] = useState(0);
+  let context = useMemo(() => ({
     parent,
     modalCount,
     addModal() {
@@ -53,7 +53,7 @@ export function ModalProvider(props: ModalProviderProps) {
         parent.removeModal();
       }
     }
-  };
+  }), [parent, modalCount]);
 
   return (
     <Context.Provider value={context}>
@@ -118,13 +118,23 @@ export function OverlayContainer(props: ModalProviderProps): React.ReactPortal {
   return ReactDOM.createPortal(contents, document.body);
 }
 
+interface ModalAriaProps extends HTMLAttributes<HTMLElement> {
+  /** Data attribute marks the dom node as a modal for the aria-modal-polyfill. */
+  'data-ismodal': boolean
+}
+
+interface ModalAria {
+  /** Props for the modal content element. */
+  modalProps: ModalAriaProps
+}
+
 /**
  * Hides content outside the current `<OverlayContainer>` from screen readers
  * on mount and restores it on unmount. Typically used by modal dialogs and
  * other types of overlays to ensure that only the top-most modal is
  * accessible at once.
  */
-export function useModal(): void {
+export function useModal(): ModalAria {
   // Add aria-hidden to all parent providers on mount, and restore on unmount.
   let context = useContext(Context);
   if (!context) {
@@ -145,4 +155,10 @@ export function useModal(): void {
       }
     };
   }, [context, context.parent]);
+
+  return {
+    modalProps: {
+      'data-ismodal': true
+    }
+  };
 }
